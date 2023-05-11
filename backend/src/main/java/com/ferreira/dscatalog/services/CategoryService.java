@@ -5,12 +5,15 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ferreira.dscatalog.dto.CategoryDTO;
 import com.ferreira.dscatalog.entities.Category;
 import com.ferreira.dscatalog.repositories.CategoryRepository;
+import com.ferreira.dscatalog.services.exceptions.DatabaseException;
 import com.ferreira.dscatalog.services.exceptions.ResourceNotFoundException;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -51,6 +54,18 @@ public class CategoryService {
             return new CategoryDTO(entity);
         } catch (EntityNotFoundException e) {
             throw new ResourceNotFoundException("Id not found");
+        }
+    }
+
+    public void delete(Long id) {
+        try {
+            if (repository.existsById(id)) {
+                repository.deleteById(id);
+            } else {
+                throw new ResourceNotFoundException("Id not found");
+            }
+        } catch (DataIntegrityViolationException e) {
+            throw new DatabaseException("Integrity violation");
         }
     }
 }

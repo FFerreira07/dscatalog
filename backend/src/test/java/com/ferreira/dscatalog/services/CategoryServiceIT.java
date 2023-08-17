@@ -11,41 +11,45 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ferreira.dscatalog.dto.ProductDTO;
-import com.ferreira.dscatalog.entities.Product;
-import com.ferreira.dscatalog.factories.ProductFactory;
-import com.ferreira.dscatalog.repositories.ProductRepository;
+import com.ferreira.dscatalog.dto.CategoryDTO;
+import com.ferreira.dscatalog.entities.Category;
+import com.ferreira.dscatalog.factories.CategoryFactory;
+import com.ferreira.dscatalog.repositories.CategoryRepository;
+import com.ferreira.dscatalog.services.exceptions.DatabaseException;
 import com.ferreira.dscatalog.services.exceptions.ResourceNotFoundException;
 
 @SpringBootTest
 @Transactional
-public class ProductServiceIT {
+public class CategoryServiceIT {
 
     @Autowired
-    private ProductService service;
+    private CategoryService service;
 
     @Autowired
-    private ProductRepository repository;
+    private CategoryRepository repository;
 
     private Long existingId;
     private Long nonExistingId;
+    private Long dependentId;
 
-    private ProductDTO productDTO;
+    private CategoryDTO categoryDTO;
 
     @BeforeEach
     void setUp() throws Exception {
         existingId = 1L;
         nonExistingId = 1000L;
+        dependentId = 3L;
 
-        productDTO = ProductFactory.createProductDTO();
+        categoryDTO = CategoryFactory.createCategoryDTO();
     }
 
     @Test
-    public void insertShouldSaveAndReturnProductDTO() {
-        productDTO.setId(null);
-        ProductDTO result = service.insert(productDTO);
+    public void insertShouldSaveAndReturnCategoryDTO() {
+        categoryDTO.setId(null);
+        CategoryDTO result = service.insert(categoryDTO);
 
         Assertions.assertNotNull(result);
         Assertions.assertNotNull(result.getId());
@@ -55,7 +59,7 @@ public class ProductServiceIT {
     public void findAllPagedShouldReturnPageWhenPageableExists() {
 
         Pageable pageable = PageRequest.of(0, 10);
-        Page<ProductDTO> result = service.findAllPaged(pageable);
+        Page<CategoryDTO> result = service.findAllPaged(pageable);
 
         Assertions.assertFalse(result.isEmpty());
         Assertions.assertEquals(0, result.getNumber());
@@ -66,7 +70,7 @@ public class ProductServiceIT {
     public void findAllPagedShouldReturnEmptyPageWhenPageableDoesNotExist() {
 
         Pageable pageable = PageRequest.of(999, 999);
-        Page<ProductDTO> result = service.findAllPaged(pageable);
+        Page<CategoryDTO> result = service.findAllPaged(pageable);
 
         Assertions.assertTrue(result.isEmpty());
     }
@@ -74,17 +78,17 @@ public class ProductServiceIT {
     @Test
     public void findAllPagedShouldReturnSortedPageWhenSortedPageableSortByNameExists() {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("Name"));
-        Page<ProductDTO> result = service.findAllPaged(pageable);
+        Page<CategoryDTO> result = service.findAllPaged(pageable);
 
         Assertions.assertFalse(result.isEmpty());
-        Assertions.assertEquals("Macbook Pro", result.getContent().get(0).getName());
-        Assertions.assertEquals("PC Gamer", result.getContent().get(1).getName());
-        Assertions.assertEquals("PC Gamer Alfa", result.getContent().get(2).getName());
+        Assertions.assertEquals("Books", result.getContent().get(0).getName());
+        Assertions.assertEquals("Computers", result.getContent().get(1).getName());
+        Assertions.assertEquals("Electronics", result.getContent().get(2).getName());
     }
 
     @Test
-    public void findByIdShouldReturnProductDTOWhenIdExists() {
-        ProductDTO result = service.findById(existingId);
+    public void findByIdShouldReturnCategoryDTOWhenIdExists() {
+        CategoryDTO result = service.findById(existingId);
 
         Assertions.assertNotNull(result);
         Assertions.assertNotNull(result.getId());
@@ -99,9 +103,9 @@ public class ProductServiceIT {
     }
 
     @Test
-    public void updateShouldUpdateAndReturnProductDTOWhenIdExists() {
-        productDTO.setId(null);
-        ProductDTO result = service.update(existingId, productDTO);
+    public void updateShouldUpdateAndReturnCategoryDTOWhenIdExists() {
+        categoryDTO.setId(null);
+        CategoryDTO result = service.update(existingId, categoryDTO);
 
         Assertions.assertNotNull(result);
         Assertions.assertNotNull(result.getId());
@@ -112,8 +116,8 @@ public class ProductServiceIT {
     public void updateShouldThrowResourceNotFoundExceptionWhenIdDoesNotExist() {
 
         Assertions.assertThrows(ResourceNotFoundException.class, () -> {
-            productDTO.setId(null);
-            service.update(nonExistingId, productDTO);
+            categoryDTO.setId(null);
+            service.update(nonExistingId, categoryDTO);
         });
     }
 
@@ -121,7 +125,7 @@ public class ProductServiceIT {
     public void deleteShouldDeleteResourceWhenIdExists() {
         service.delete(existingId);
 
-        Optional<Product> result = repository.findById(existingId);
+        Optional<Category> result = repository.findById(existingId);
         Assertions.assertTrue(result.isEmpty());
     }
 
@@ -133,4 +137,12 @@ public class ProductServiceIT {
         });
     }
 
+    @Test
+    @Transactional(propagation = Propagation.NEVER) 
+    public void deleteShouldThrowDatabaseExceptionWhenDependentId() {
+
+        Assertions.assertThrows(DatabaseException.class, () -> {
+            service.delete(dependentId);
+        });
+    }
 }
